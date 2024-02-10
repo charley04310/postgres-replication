@@ -4,6 +4,34 @@ Cette documentation vous guidera à travers le processus de mise en place d'une 
 
 Dans l'objectif d'aborder les problématiques **cloud native**, nous avons choisi d'utiliser **Docker** et **Kubernetes** pour la mise en place de l'infrastructure.
 
+## Table des matières
+
+> - [Streaming replication PSQL](#streaming-replication-psql)
+> - [1. Instance creation](#1-instance-creation)
+> - [2. Configuration](#2-configuration)
+>   - [2.1. Primary instance (pg0)](#21-primary-instance--pg0-)
+> - [2.2. Secondary instance](#22-secondary-instance)
+> - [3. Verification](#3-verification)
+>   - [3.1. Process verification](#31-process-verification)
+>   - [3.2. Log verification](#32-log-verification)
+> - [4. Testing replication](#4-testing-replication)
+>   - [4.1. Write and read test](#41-write-and-read-test)
+> - [5. Monitoring](#5-monitoring)
+>   - [5.1. From primary instance](#51-from-primary-instance)
+>   - [5.2. From secondary instance](#52-from-secondary-instance)
+> - [DEBUT DES QUESTIONS:](#debut-des-questions-)
+> - [6. Promotion](#6-promotion)
+>   - [6.1. Promotion of the secondary instance](#61-promotion-of-the-secondary-instance)
+>   - [6.2. Reconfiguration of the primary instance as secondary](#62-reconfiguration-of-the-primary-instance-as-secondary)
+> - [7. Configuration as synchronous streaming replication](#7-configuration-as-synchronous-streaming-replication)
+>   - [7.1. Configuration of new secondary instances](#71-configuration-of-new-secondary-instances)
+>   - [7.2. Configuration of synchronous replication](#72-configuration-of-synchronous-replication)
+>   - [7.3. Tests](#73-tests)
+> - [Bonus : utilisation du QUORUM](#bonus---utilisation-du-quorum)
+> - [8. Analyse des slots de réplication](#8-analyse-des-slots-de-r-plication)
+>   - [8.1. Analyse des fichiers WAL](#81-analyse-des-fichiers-wal)
+> - [9. Conclusion](#9-conclusion)
+
 ## 1. Instance creation
 
 Depuis le CLI de docker, exécutez la commande suivante pour entrer dans le conteneur psql `pg0` et `pg1`:
