@@ -38,6 +38,7 @@ Dans l'objectif d'aborder les problématiques **cloud native**, nous avons chois
     - [1.2 Le « ConfigMap »](#12-le--configmap-)
     - [1.3 Le « Headless Service »](#13-le--headless-service-)
     - [1.4 Les limites](#14-les-limites)
+    - [1.5 Les solutions](#15-les-solutions)
   - [Conclusion](#conclusion)
 
 ## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 />  Docker Compose
@@ -556,7 +557,17 @@ Le service sans-tête correspondant est disponible dans le fichier [service.yaml
 
 ### 1.4 Les limites
 
-Le bootstrap du cluster PostgreSQL
+Le processus de démarrage initial du cluster PostgreSQL et de sa réplication fonctionne de manière optimale dans Kubernetes. Cependant, qu'en est-il si, par exemple, le pod à l'index 1 est promu en tant que serveur principal ? Dans un tel cas, comment assurer que le service pointe désormais vers le nouveau serveur principal ? Pour un scénario de récupération après sinistre, il est impératif que chaque pod PostgreSQL soit conscient des autres, ce qui implique une initialisation synchronisée. Dans ce contexte, la garantie d'ordre offerte par le StatefulSet et la résolution DNS offerte pas le headless service perdent de leurs utilités.
+
+Dans les scripts d'initialisation actuels, les DNS sont délibérément codés en dur pour le serveur principal et les serveurs standby. Cette approche pose des défis en termes de flexibilité et de gestion des changements dynamiques au sein du cluster.
+
+Ainsi, il devient de plus en plus évident que la gestion continue du cluster nécessite des actions manuelles. Des compétences avancées sont obligatoires, non seulement en ce qui concerne Kubernetes, mais également en ce qui concerne PostgreSQL.
+
+### 1.5 Les solutions
+
+Les indices du StatefulSet conservent leur utilité, mais le bootstrap ordonné devient obsolète. Par conséquent, le paramètre "podManagementPolicy" du StatefulSet doit être configuré sur "Parallel". Le service headless n'est plus pertinent dans ce contexte, donc nous devons revenir à deux services de type ClusterIP : l'un pour le server primaire et l'autre pour l'ensemble des instances. Nous devons également gérer dynamiquement l'endpoint du service destiné au priamire, pour le mettre à jour à chaque nouvelle promotion. Ces considérations nous mènent inévitablement à l'utilisation d'un orchestrateur.
+
+En plongeant dans les détails, il devient de plus en plus évident qu'il est impératif d'utiliser un opérateur pour gérer efficacement ces scénarios complexes.
 
 ## Conclusion
 
