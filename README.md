@@ -33,12 +33,13 @@ Dans l'objectif d'aborder les problématiques **cloud native**, nous avons chois
     - [8. Analyse des slots de réplication](#8-analyse-des-slots-de-réplication)
       - [8.1. Analyse des fichiers WAL](#81-analyse-des-fichiers-wal)
   - [II)  Kubernetes](#ii--kubernetes)
-  - [1. Première approche](#1-première-approche)
-    - [1.1 Le « StatefulSet »](#11-le--statefulset-)
-    - [1.2 Le « ConfigMap »](#12-le--configmap-)
-    - [1.3 Le « Headless Service »](#13-le--headless-service-)
-    - [1.4 Les limites](#14-les-limites)
-    - [1.5 Les solutions](#15-les-solutions)
+    - [1. Première approche](#1-première-approche)
+      - [1.1 Le « StatefulSet »](#11-le--statefulset-)
+      - [1.2 Le « ConfigMap »](#12-le--configmap-)
+      - [1.3 Le « Headless Service »](#13-le--headless-service-)
+    - [2. Les limites](#2-les-limites)
+    - [3. Les solutions](#3-les-solutions)
+    - [4. Pour aller plus loin](#4-pour-aller-plus-loin)
   - [Conclusion](#conclusion)
 
 ## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 />  Docker Compose
@@ -503,13 +504,13 @@ Les défis liés à la réplication des données tout en garantissant un état c
 
 Les manifestes Kubernetes pour le déploiement du cluster PostgreSQL sont accessibles dans le dossier [manifests](./manifests/).
 
-## 1. Première approche
+### 1. Première approche
 
 Il est souvent souligné que le déploiement de systèmes de gestion de base de données relationnelle (RDBMS) dans un cluster Kubernetes en haute disponibilité peut être très complexe. Mais pourquoi est-ce le cas ? Une des solutions populaires pour PostgreSQL consiste à utiliser un opérateur Kubernetes. L'un des opérateurs les plus reconnus est celui développé par Zalando, disponible sur [GitHub](https://github.com/zalando/postgres-operator).
 
 Dans le cadre de notre TP, nous allons tenter de déployer cette solution dans Kubernetes en exploitant au maximum les ressources natives de la plateforme.
 
-### 1.1 Le « StatefulSet »
+#### 1.1 Le « StatefulSet »
 
 StatefulSet est l'objet de l'API de charge de travail utilisé pour gérer les applications avec état. Il gère le déploiement et la mise à l'échelle d'un ensemble de Pods et fournit des garanties sur l'ordre et l'unicité de ces Pods.
 
@@ -521,7 +522,7 @@ Dans cette configuration :
   
 Vous pouvez consulter le manifeste [statefulset.yaml](./manifests/statefulset.yaml) pour plus de détails.
 
-### 1.2 Le « ConfigMap »
+#### 1.2 Le « ConfigMap »
 
 Un ConfigMap est un objet API utilisé pour stocker des données non confidentielles dans des paires clé-valeur. Les pods peuvent consommer des ConfigMaps en tant que variables d'environnement, arguments de ligne de commande ou fichiers de configuration dans un volume. Il vous permet de découpler la configuration spécifique à l'environnement de vos images de conteneur, afin que vos applications soient facilement portables.
 
@@ -541,7 +542,7 @@ get_ordinal() {
 
 Cette fonction extrait l'index du nom d'hôte du pod, ce qui permet de distinguer les pods principaux des pods standby et de prendre les mesures appropriées en fonction de leur rôle dans le cluster PostgreSQL.
 
-### 1.3 Le « Headless Service »
+#### 1.3 Le « Headless Service »
 
 Un « headless service » dans Kubernetes peut être un outil utile pour créer des applications distribuées. Il vous permet d'accéder directement aux différents pods d'un service. Cela est utile dans les scénarios où vous devez effectuer un équilibrage de charge complexe.
 
@@ -555,19 +556,29 @@ Ce type d'enregistrement DNS sera particulièrement utile pour accéder au pod p
 
 Le service sans-tête correspondant est disponible dans le fichier [service.yaml](./manifests/service.yaml).
 
-### 1.4 Les limites
+### 2. Les limites
 
-Le processus de démarrage initial du cluster PostgreSQL et de sa réplication fonctionne de manière optimale dans Kubernetes. Cependant, qu'en est-il si, par exemple, le pod à l'index 1 est promu en tant que serveur principal ? Dans un tel cas, comment assurer que le service pointe désormais vers le nouveau serveur principal ? Pour un scénario de récupération après sinistre, il est impératif que chaque pod PostgreSQL soit conscient des autres, ce qui implique une initialisation synchronisée. Dans ce contexte, la garantie d'ordre offerte par le StatefulSet et la résolution DNS offerte pas le headless service perdent de leurs utilités.
+Le processus de démarrage initial du cluster PostgreSQL et de sa réplication fonctionne de manière optimale dans Kubernetes. Cependant, qu'en est-il si, par exemple, le pod à l'index 1 est promu en tant que serveur principal ? Dans un tel cas, comment s'assurer que le service pointe désormais vers le nouveau serveur principal ? Pour un scénario de récupération après sinistre, il est impératif que chaque pod PostgreSQL soit conscient des autres, ce qui implique une initialisation synchronisée. Dans ce contexte, la garantie d'ordre offerte par le StatefulSet et la résolution DNS offerte pas le headless service perdent de leurs utilités.
 
 Dans les scripts d'initialisation actuels, les DNS sont délibérément codés en dur pour le serveur principal et les serveurs standby. Cette approche pose des défis en termes de flexibilité et de gestion des changements dynamiques au sein du cluster.
 
 Ainsi, il devient de plus en plus évident que la gestion continue du cluster nécessite des actions manuelles. Des compétences avancées sont obligatoires, non seulement en ce qui concerne Kubernetes, mais également en ce qui concerne PostgreSQL.
 
-### 1.5 Les solutions
+### 3. Les solutions
 
-Les indices du StatefulSet conservent leur utilité, mais le bootstrap ordonné devient obsolète. Par conséquent, le paramètre "podManagementPolicy" du StatefulSet doit être configuré sur "Parallel". Le service headless n'est plus pertinent dans ce contexte, donc nous devons revenir à deux services de type ClusterIP : l'un pour le server primaire et l'autre pour l'ensemble des instances. Nous devons également gérer dynamiquement l'endpoint du service destiné au priamire, pour le mettre à jour à chaque nouvelle promotion. Ces considérations nous mènent inévitablement à l'utilisation d'un orchestrateur.
+Bien que les indices du StatefulSet conservent leur utilité, le bootstrap ordonné devient obsolète dans ce contexte. Ainsi, le paramètre "podManagementPolicy" du StatefulSet doit être configuré sur "Parallel" pour permettre une gestion parallèle des pods. Dans le même esprit, le service headless n'est plus nécessaire, nous devons donc revenir à deux services de type ClusterIP : l'un pour le serveur primaire et l'autre pour l'ensemble des instances. De plus, nous devons mettre en place un mécanisme pour gérer dynamiquement l'[endpoint](https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors) du service lié au serveur primaire, afin de le mettre à jour à chaque nouvelle promotion.
 
 En plongeant dans les détails, il devient de plus en plus évident qu'il est impératif d'utiliser un opérateur pour gérer efficacement ces scénarios complexes.
+
+### 4. Pour aller plus loin
+
+Les scénarios complexes liés au déploiement et à la gestion d'un cluster PostgreSQL sont innombrables et peuvent être difficiles à anticiper dans leur intégralité. Certains de ces scénarios sont délibérément omis ici pour se concentrer sur les défis généraux rencontrés.
+
+En résumé, le choix entre déployer soi-même un cluster PostgreSQL ou utiliser un opérateur Kubernetes est une décision importante. D'un côté, déployer manuellement un cluster PostgreSQL peut être une tâche complexe, étant donné la nature complexe de PostgreSQL lui-même et les problématiques imprévues qui peuvent survenir. D'un autre côté, l'utilisation d'un opérateur peut sembler magique dans la mesure où il gère de nombreuses actions complexes de manière automatisée, mais cela peut aussi signifier une perte de compréhension des actions effectuées dans le cluster Kubernetes.
+
+Une troisième option à considérer est l'utilisation d'une base de données managée, où vous payez un service tiers pour gérer entièrement le déploiement, la maintenance et les opérations de votre base de données PostgreSQL. Cela garantit un niveau de service et de fiabilité élevé, tout en libérant du temps et des ressources pour se concentrer sur d'autres aspects de votre application.
+
+Le choix dépendra des besoins spécifiques de votre projet, de vos compétences en matière de gestion de bases de données et de Kubernetes, ainsi que de votre tolérance au risque et de vos contraintes budgétaires.
 
 ## Conclusion
 
