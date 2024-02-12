@@ -1,38 +1,48 @@
-# Streaming replication PSQL
+# PostgreSQL - Streaming replication
 
-Cette documentation vous guidera à travers le processus de mise en place d'une réplication en streaming entre les instances PSQL. Cette documentation est basée sur le TP de l'UE BDA.
+Cette documentation vous guidera à travers le processus de mise en place d'une réplication en streaming entre les instances PostgreSQLs à l'aide de la commande **psql**. Cette documentation est basée sur le TP de l'UE BDA.
 
 Dans l'objectif d'aborder les problématiques **cloud native**, nous avons choisi d'utiliser **Docker** et **Kubernetes** pour la mise en place de l'infrastructure.
 
 ## Table des matières
 
-> - [Streaming replication PSQL](#streaming-replication-psql)
-> - [1. Instance creation](#1-instance-creation)
-> - [2. Configuration](#2-configuration)
->   - [2.1. Primary instance (pg0)](#21-primary-instance--pg0-)
-> - [2.2. Secondary instance](#22-secondary-instance)
-> - [3. Verification](#3-verification)
->   - [3.1. Process verification](#31-process-verification)
->   - [3.2. Log verification](#32-log-verification)
-> - [4. Testing replication](#4-testing-replication)
->   - [4.1. Write and read test](#41-write-and-read-test)
-> - [5. Monitoring](#5-monitoring)
->   - [5.1. From primary instance](#51-from-primary-instance)
->   - [5.2. From secondary instance](#52-from-secondary-instance)
-> - [DEBUT DES QUESTIONS:](#debut-des-questions-)
-> - [6. Promotion](#6-promotion)
->   - [6.1. Promotion of the secondary instance](#61-promotion-of-the-secondary-instance)
->   - [6.2. Reconfiguration of the primary instance as secondary](#62-reconfiguration-of-the-primary-instance-as-secondary)
-> - [7. Configuration as synchronous streaming replication](#7-configuration-as-synchronous-streaming-replication)
->   - [7.1. Configuration of new secondary instances](#71-configuration-of-new-secondary-instances)
->   - [7.2. Configuration of synchronous replication](#72-configuration-of-synchronous-replication)
->   - [7.3. Tests](#73-tests)
-> - [Bonus : utilisation du QUORUM](#bonus---utilisation-du-quorum)
-> - [8. Analyse des slots de réplication](#8-analyse-des-slots-de-r-plication)
->   - [8.1. Analyse des fichiers WAL](#81-analyse-des-fichiers-wal)
-> - [9. Conclusion](#9-conclusion)
+- [PostgreSQL - Streaming replication](#postgresql---streaming-replication)
+  - [Table des matières](#table-des-matières)
+  - [I)   Docker Compose](#i---docker-compose)
+    - [1. Instance creation](#1-instance-creation)
+    - [2. Configuration](#2-configuration)
+      - [2.1. Primary instance (pg0)](#21-primary-instance-pg0)
+    - [2.2. Secondary instance](#22-secondary-instance)
+    - [3. Verification](#3-verification)
+      - [3.1. Process verification](#31-process-verification)
+      - [3.2. Log verification](#32-log-verification)
+    - [4. Testing replication](#4-testing-replication)
+      - [4.1. Write and read test](#41-write-and-read-test)
+    - [5. Monitoring](#5-monitoring)
+      - [5.1. From primary instance](#51-from-primary-instance)
+      - [5.2. From secondary instance](#52-from-secondary-instance)
+    - [DEBUT DES QUESTIONS:](#debut-des-questions)
+    - [6. Promotion](#6-promotion)
+      - [6.1. Promotion of the secondary instance](#61-promotion-of-the-secondary-instance)
+      - [6.2. Reconfiguration of the primary instance as secondary](#62-reconfiguration-of-the-primary-instance-as-secondary)
+    - [7. Configuration as synchronous streaming replication](#7-configuration-as-synchronous-streaming-replication)
+      - [7.1. Configuration of new secondary instances](#71-configuration-of-new-secondary-instances)
+      - [7.2. Configuration of synchronous replication](#72-configuration-of-synchronous-replication)
+      - [7.3. Tests](#73-tests)
+    - [Bonus : utilisation du QUORUM](#bonus--utilisation-du-quorum)
+    - [8. Analyse des slots de réplication](#8-analyse-des-slots-de-réplication)
+      - [8.1. Analyse des fichiers WAL](#81-analyse-des-fichiers-wal)
+  - [II)  Kubernetes](#ii--kubernetes)
+  - [1. Première approche](#1-première-approche)
+    - [1.1 Le « StatefulSet »](#11-le--statefulset-)
+    - [1.2 Le « ConfigMap »](#12-le--configmap-)
+    - [1.3 Le « Headless Service »](#13-le--headless-service-)
+    - [1.4 Les limites](#14-les-limites)
+  - [Conclusion](#conclusion)
 
-## 1. Instance creation
+## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 />  Docker Compose
+
+### 1. Instance creation
 
 Depuis le CLI de docker, exécutez la commande suivante pour entrer dans le conteneur psql `pg0` et `pg1`:
 
@@ -63,9 +73,9 @@ Le résultat devrait être comme ci dessous:
 
 <img src="./documentation/ouput_status_cluster.png" alt="dns" width="1200"/>
 
-## 2. Configuration
+### 2. Configuration
 
-### 2.1. Primary instance (pg0)
+#### 2.1. Primary instance (pg0)
 
 Executer la suite depuis l'utilisateur `postgres`:
 
@@ -118,7 +128,7 @@ Vous pouvez maintenant redémarrer l'instance `pg0` pour appliquer les changemen
 service postgresql restart
 ```
 
-## 2.2. Secondary instance
+### 2.2. Secondary instance
 
 Maintenant que la configuration de l'instance primaire est terminée, nous pouvons passer à la configuration de l'instance secondaire `pg1`.
 
@@ -164,9 +174,9 @@ $ touch /var/lib/postgresql/15/pg1/standby.signal
 $ service postgresql restart
 ```
 
-## 3. Verification
+### 3. Verification
 
-### 3.1. Process verification
+#### 3.1. Process verification
 
 Pour controller si les processus `walreceiver` et `walsender` sont en cours d'exécution, vous pouvez utiliser la commande suivante:
 
@@ -186,7 +196,7 @@ Depuis l'instance `pg1` vous devriez voir le processus `walreceiver` en cours d'
 postgres     437  0.0  0.0 217352 13716 ?        Ss   17:25   0:00 postgres: 15/pg1: walreceiver streaming 0/3000148
 ```
 
-### 3.2. Log verification
+#### 3.2. Log verification
 
 Vous pouvez aussi vérifier les logs pour voir si la réplication fonctionne correctement. Depuis l'instance `pg1`, vous pouvez utiliser la commande suivante pour vérifier le log:
 
@@ -198,7 +208,7 @@ La sortie devrait ressembler à ceci:
 
 <img src="./documentation/logs.png" alt="log" />
 
-## 4. Testing replication
+### 4. Testing replication
 
 Pour tester la réplication, vous pouvez créer une table à partir de l'instance primaire `pg0` et vérifier si la table est créée dans l'instance secondaire `pg1`.
 
@@ -218,7 +228,7 @@ La sortie devrait ressembler à ceci:
 
 <img src="./documentation/table_replication.png" alt="table"/>
 
-### 4.1. Write and read test
+#### 4.1. Write and read test
 
 Pour être sûr qu'il est impossible d'écrire sur l'instance secondaire `pg1`, vous pouvez essayer de créer une table dans la base de données `music` depuis celle-ci:
 
@@ -238,9 +248,9 @@ Essayons maintenant de lire les données de la table `artists` depuis l'instance
 La sortie devrait ressembler à ceci:
 <img src="./documentation/readable.png" alt="read" />
 
-## 5. Monitoring
+### 5. Monitoring
 
-### 5.1. From primary instance
+#### 5.1. From primary instance
 
 La réplication peut être monitoré à partir de l'instance primaire en utilisant la commande suivante:
 
@@ -248,7 +258,7 @@ La réplication peut être monitoré à partir de l'instance primaire en utilisa
 $ psql -p 5433 -x  -c "select * from pg_stat_replication;"
 ```
 
-### 5.2. From secondary instance
+#### 5.2. From secondary instance
 
 Depuis l'instance secondaire, les métriques de réplication peuvent être surveillées en utilisant la commande suivante:
 
@@ -256,7 +266,7 @@ Depuis l'instance secondaire, les métriques de réplication peuvent être surve
 $ psql -p 5433 -x -c "select * from pg_stat_wal_receiver;"
 ```
 
-## DEBUT DES QUESTIONS:
+### DEBUT DES QUESTIONS:
 
 > Comparez les informations sur la réplication avec celles observées sur le primaire.
 > Que remarquez-vous ?
@@ -285,9 +295,9 @@ On remarque que le slot `pg1_slot` est actif avec une valeur `t` (qui signifie t
 
 On remaque aussi que le "sender" correspond bien à la valeur `pg0` qui est le serveur primaire.
 
-## 6. Promotion
+### 6. Promotion
 
-### 6.1. Promotion of the secondary instance
+#### 6.1. Promotion of the secondary instance
 
 Pour promouvoir l'instance secondaire `pg1` en tant que serveur primaire, vous pouvez utiliser la commande suivante:
 
@@ -302,7 +312,7 @@ On remarque que la requête abouti et que le serveur secondaire a bien été pro
 
 <img src="./documentation/promotion.png" alt="promotion" width="1200"/>
 
-### 6.2. Reconfiguration of the primary instance as secondary
+#### 6.2. Reconfiguration of the primary instance as secondary
 
 > Affichez les logs de l’instance pg0 (/var/log/postgresql/postgresql-15-pg0.log) et montrez qu’elle est bien passé en instance secondaire (ou « standby »).
 
@@ -322,9 +332,9 @@ Apres avoir créé une nouvelle table dans la base `music` depuis l'instance `pg
 
 <img src="./documentation/write_pg1.png" alt="standby_table" />
 
-## 7. Configuration as synchronous streaming replication
+### 7. Configuration as synchronous streaming replication
 
-### 7.1. Configuration of new secondary instances
+#### 7.1. Configuration of new secondary instances
 
 > Montrez que les deux nouveaux secondaires sont bien reliés au primaire.
 
@@ -338,7 +348,7 @@ On remarque que les deux nouveaux secondaires sont bien reliés au primaire. On 
 
 <img src="./documentation/select_all_secondary.png" alt="secondaries" />
 
-### 7.2. Configuration of synchronous replication
+#### 7.2. Configuration of synchronous replication
 
 > Montrez que l’instance sync2 est devenue une instance synchrone
 
@@ -386,7 +396,7 @@ On remarque que l'instance `pg3` est bien devenue une instance synchrone. On en 
 
 On remarque que l'instance `pg3` est bien devenue une instance synchrone, cela s'explique par la propriété `FIRST 2` ajouté précedemment qui defini les deux premieres instances déclarées comme etant obligatoires pour la synchronisation.
 
-### 7.3. Tests
+#### 7.3. Tests
 
 > Arrêtez sync3 (pg3). Que se passe-t-il si vous essayez de créer une nouvelle table dans la base de données music ? Redémarrez ensuite sync3. La requête aboutit-elle ? Que pouvez-vous en déduire ?
 
@@ -408,7 +418,7 @@ postgres@cf932b694ba1:~$  psql -p 5433 -d music -c "select * from syncronTest;"
 (0 rows)
 ```
 
-## Bonus : utilisation du QUORUM
+### Bonus : utilisation du QUORUM
 
 > Observez l’état des serveurs et montrez que les trois instances secondaires font désormais partie du quorum.
 
@@ -422,9 +432,9 @@ On remarque que la requete s'execute normalement sans erreur ou warning d'exécu
 
 <img src="./documentation/quorum_create_table.png" alt="quorum" />
 
-## 8. Analyse des slots de réplication
+### 8. Analyse des slots de réplication
 
-### 8.1. Analyse des fichiers WAL
+#### 8.1. Analyse des fichiers WAL
 
 > Listez le contenu de /var/lib/postgresql/15/pg1/pg_wal
 
@@ -482,7 +492,73 @@ Ensuite nous pouvons relancer la commande `psql -p 5434 -c 'CHECKPOINT;'` pour v
 
 On remarque que la valeur hexadécimale des fichiers WAL a bien changé. On peut en deduire que les fichiers ont bien été réécris. Cela s'explique par le fait que l'instance `pg2` est bien synchronisée avec le primaire et que les données ont bien été repliquées.
 
-## 9. Conclusion
+## II) <img src="https://www.vectorlogo.zone/logos/kubernetes/kubernetes-icon.svg" alt="docker" height=50 /> Kubernetes
+
+Pour aller plus loin, il est intéressant d'examiner l'état de l'art des bases de données relationnelles dans un contexte de mise à l'échelle et de résilience dans l'un des technologies les plus prisés aujourd'hui : *Kubernetes*.
+
+Il est indispensable pour des entreprises telles que Zalando ou Amazon de disposer d'une base de données hautement disponible. Cela nécessite des fonctionnalités de résilience, de mise à l'échelle dynamique et de reprise après sinistre.
+
+Les défis liés à la réplication des données tout en garantissant un état cohérent peuvent être particulièrement complexes à résoudre. Nous allons explorer ces aspects en détail.
+
+Les manifestes Kubernetes pour le déploiement du cluster PostgreSQL sont accessibles dans le dossier [manifests](./manifests/).
+
+## 1. Première approche
+
+Il est souvent souligné que le déploiement de systèmes de gestion de base de données relationnelle (RDBMS) dans un cluster Kubernetes en haute disponibilité peut être très complexe. Mais pourquoi est-ce le cas ? Une des solutions populaires pour PostgreSQL consiste à utiliser un opérateur Kubernetes. L'un des opérateurs les plus reconnus est celui développé par Zalando, disponible sur [GitHub](https://github.com/zalando/postgres-operator).
+
+Dans le cadre de notre TP, nous allons tenter de déployer cette solution dans Kubernetes en exploitant au maximum les ressources natives de la plateforme.
+
+### 1.1 Le « StatefulSet »
+
+StatefulSet est l'objet de l'API de charge de travail utilisé pour gérer les applications avec état. Il gère le déploiement et la mise à l'échelle d'un ensemble de Pods et fournit des garanties sur l'ordre et l'unicité de ces Pods.
+
+Le modèle de conception du StatefulSet suit une logique maître/esclave, ce qui se révèle particulièrement pertinent dans notre cas, notamment pour la gestion de PostgreSQL et de sa réplication. Nous avons ainsi une base de données principale (primaire) et des bases de données de secours (standby). 
+
+Dans cette configuration :
+- l'index 0 du StatefulSet représente notre base de données principale
+- les index supérieurs à 0 correspondent aux serveurs standby.
+  
+Vous pouvez consulter le manifeste [statefulset.yaml](./manifests/statefulset.yaml) pour plus de détails.
+
+### 1.2 Le « ConfigMap »
+
+Un ConfigMap est un objet API utilisé pour stocker des données non confidentielles dans des paires clé-valeur. Les pods peuvent consommer des ConfigMaps en tant que variables d'environnement, arguments de ligne de commande ou fichiers de configuration dans un volume. Il vous permet de découpler la configuration spécifique à l'environnement de vos images de conteneur, afin que vos applications soient facilement portables.
+
+Dans notre cas, le ConfigMap joue un rôle essentiel pour monter des scripts d'initialisation de la réplication dans le répertoire **docker-entrypoint-initdb.d** du conteneur PostgreSQL. Cela est spécifié dans le manifeste [configmap.yaml](./manifests/configmap.yaml).
+
+Lors de l'initialisation, il est crucial que le script d'initialisation détecte l'index du pod afin de déterminer s'il doit exécuter le script "primary" ou "standby". Pour ce faire, nous utilisons une fonction bash comme celle-ci :
+
+```bash
+get_ordinal() {
+  if [[ $(hostname) =~ -([0-9]+)$ ]]; then
+      echo "${BASH_REMATCH[1]}"
+  else
+      exit 1
+  fi
+}
+```
+
+Cette fonction extrait l'index du nom d'hôte du pod, ce qui permet de distinguer les pods principaux des pods standby et de prendre les mesures appropriées en fonction de leur rôle dans le cluster PostgreSQL.
+
+### 1.3 Le « Headless Service »
+
+Un « headless service » dans Kubernetes peut être un outil utile pour créer des applications distribuées. Il vous permet d'accéder directement aux différents pods d'un service. Cela est utile dans les scénarios où vous devez effectuer un équilibrage de charge complexe.
+
+Une fois que vous avez créé un service "sans-tête", vous pouvez accéder à chaque pod associé au service par le biais du DNS. L'enregistrement DNS de chaque pod sera au format :
+**\<pod-name>.\<headless-service-name>.\<namespace>.svc.cluster.local**
+
+Ce type d'enregistrement DNS sera particulièrement utile pour accéder au pod portant l'index 0, représentant ainsi le serveur primaire, ainsi qu'aux autres pods dans le cluster. Dans le script d'initialisation, les hôtes suivants sont utilisés :
+
+- postgres-cluster-0.postgres-cluster.postgres.svc.cluster.local
+- postgres-cluster-1.postgres-cluster.postgres.svc.cluster.local
+
+Le service sans-tête correspondant est disponible dans le fichier [service.yaml](./manifests/service.yaml).
+
+### 1.4 Les limites
+
+Le bootstrap du cluster PostgreSQL
+
+## Conclusion
 
 En conclusion de ce TP, la mise en place réussie d'une réplication en streaming entre les instances PSQL, avec la configuration des serveurs primaire et secondaire (pg0 et pg1), ainsi que des serveurs secondaires synchrone puis asynchrone, a permis d'explorer le fonctionnement des slots de réplication et l'impact de la fonction CHECKPOINT sur les fichiers WAL.
 
