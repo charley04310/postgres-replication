@@ -39,7 +39,7 @@ Dans l'objectif d'aborder les problématiques **cloud native**, nous avons chois
       - [1.3 Le « Headless Service »](#13-le--headless-service-)
     - [2. Les limites](#2-les-limites)
     - [3. Les solutions](#3-les-solutions)
-    - [4. Pour aller plus loin](#4-pour-aller-plus-loin)
+    - [4. Quelles sont les leçons à en tirer ?](#4-quelles-sont-les-leçons-à-en-tirer-)
   - [Conclusion](#conclusion)
 
 ## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 />  Docker Compose
@@ -570,15 +570,19 @@ Bien que les indices du StatefulSet conservent leur utilité, le bootstrap ordon
 
 En plongeant dans les détails, il devient de plus en plus évident qu'il est impératif d'utiliser un opérateur pour gérer efficacement ces scénarios complexes.
 
-### 4. Pour aller plus loin
+### 4. Quelles sont les leçons à en tirer ?
 
 Les scénarios complexes liés au déploiement et à la gestion d'un cluster PostgreSQL sont innombrables et peuvent être difficiles à anticiper dans leur intégralité. Certains de ces scénarios sont délibérément omis ici pour se concentrer sur les défis généraux rencontrés.
 
-En résumé, le choix entre déployer soi-même un cluster PostgreSQL ou utiliser un opérateur Kubernetes est une décision importante. D'un côté, déployer manuellement un cluster PostgreSQL peut être une tâche complexe, étant donné la nature complexe de PostgreSQL lui-même et les problématiques imprévues qui peuvent survenir. D'un autre côté, l'utilisation d'un opérateur peut sembler magique dans la mesure où il gère de nombreuses actions complexes de manière automatisée, mais cela peut aussi signifier une perte de compréhension des actions effectuées dans le cluster Kubernetes.
+Le choix entre déployer soi-même un cluster PostgreSQL et utiliser un opérateur Kubernetes est une décision cruciale, et les avis peuvent diverger.
 
-Une troisième option à considérer est l'utilisation d'une base de données managée, où vous payez un service tiers pour gérer entièrement le déploiement, la maintenance et les opérations de votre base de données PostgreSQL. Cela garantit un niveau de service et de fiabilité élevé, tout en libérant du temps et des ressources pour se concentrer sur d'autres aspects de votre application.
+Déployer manuellement un cluster PostgreSQL peut être réalisable pour des équipes ayant une expertise approfondie dans la gestion des bases de données et de Kubernetes. Cependant, cela implique une charge de travail importante pour configurer, maintenir et optimiser le cluster, ainsi qu'une expertise technique pour résoudre les problèmes potentiels.
 
-Le choix dépendra des besoins spécifiques de votre projet, de vos compétences en matière de gestion de bases de données et de Kubernetes, ainsi que de votre tolérance au risque et de vos contraintes budgétaires.
+D'autre part, l'utilisation d'un opérateur Kubernetes peut simplifier considérablement le déploiement et la gestion du cluster PostgreSQL en automatisant de nombreuses tâches complexes. Cela peut être particulièrement avantageux pour les équipes qui recherchent une solution plus rapide et plus facile à gérer, même si cela peut entraîner une perte de compréhension des opérations sous-jacentes effectuées par l'opérateur.
+
+Une alternative est l'utilisation d'une base de données managée, qui décharge complètement l'équipe de l'administration du cluster PostgreSQL. Bien que cela puisse coûter plus cher, cela garantit un niveau de service élevé et libère du temps et des ressources pour se concentrer sur le développement et l'amélioration de l'application.
+
+En fin de compte, la décision dépendra des besoins spécifiques de l'organisation, de son expertise technique, de son budget et de ses priorités en matière de gestion des données.
 
 ## Conclusion
 
