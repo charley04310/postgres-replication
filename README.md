@@ -10,7 +10,7 @@ Vous pouvez trouver tous les fichiers de deploiements en lien avec ce TP sur not
 
 - [PostgreSQL - Streaming replication](#postgresql---streaming-replication)
   - [Table des matières](#table-des-matières)
-  - [I) Docker Compose](#i---docker-compose)
+  - [I)  Docker Compose](#i--docker-compose)
     - [1. Instance creation](#1-instance-creation)
     - [2. Configuration](#2-configuration)
       - [2.1. Primary instance (pg0)](#21-primary-instance-pg0)
@@ -34,14 +34,13 @@ Vous pouvez trouver tous les fichiers de deploiements en lien avec ce TP sur not
     - [Bonus : utilisation du QUORUM](#bonus--utilisation-du-quorum)
     - [8. Analyse des slots de réplication](#8-analyse-des-slots-de-réplication)
       - [8.1. Analyse des fichiers WAL](#81-analyse-des-fichiers-wal)
-  - [II) Kubernetes](#ii--kubernetes)
+  - [II)  Kubernetes](#ii--kubernetes)
     - [1. Première approche](#1-première-approche)
       - [1.1 Le « StatefulSet »](#11-le--statefulset-)
       - [1.2 Le « ConfigMap »](#12-le--configmap-)
       - [1.3 Le « Headless Service »](#13-le--headless-service-)
     - [2. Les limites](#2-les-limites)
     - [3. Les solutions](#3-les-solutions)
-    - [4. Quelles sont les leçons à en tirer ?](#4-quelles-sont-les-leçons-à-en-tirer-)
   - [Conclusion](#conclusion)
 
 ## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 /> Docker Compose
@@ -573,7 +572,11 @@ Bien que les indices du StatefulSet conservent leur utilité, le bootstrap ordon
 
 En plongeant dans les détails, il devient de plus en plus évident qu'il est impératif d'utiliser un opérateur pour gérer efficacement ces scénarios complexes.
 
-### 4. Quelles sont les leçons à en tirer ?
+## Conclusion
+
+En conclusion de ce TP, la mise en place réussie d'une réplication en streaming entre les instances PSQL, avec la configuration des serveurs primaire et secondaire (pg0 et pg1), ainsi que des serveurs secondaires synchrone puis asynchrone, a permis d'explorer le fonctionnement des slots de réplication et l'impact de la fonction CHECKPOINT sur les fichiers WAL.
+
+Cependant, il est important de souligner que cette solution s'avère difficilement implémentable pour un modèle cloud natif tel que Kubernetes. 
 
 Les scénarios complexes liés au déploiement et à la gestion d'un cluster PostgreSQL sont innombrables et peuvent être difficiles à anticiper dans leur intégralité. Certains de ces scénarios sont délibérément omis ici pour se concentrer sur les défis généraux rencontrés.
 
@@ -586,11 +589,3 @@ D'autre part, l'utilisation d'un opérateur Kubernetes peut simplifier considér
 Une alternative est l'utilisation d'une base de données managée, qui décharge complètement l'équipe de l'administration du cluster PostgreSQL. Bien que cela puisse coûter plus cher, cela garantit un niveau de service élevé et libère du temps et des ressources pour se concentrer sur le développement et l'amélioration de l'application.
 
 En fin de compte, la décision dépendra des besoins spécifiques de l'organisation, de son expertise technique, de son budget et de ses priorités en matière de gestion des données.
-
-## Conclusion
-
-En conclusion de ce TP, la mise en place réussie d'une réplication en streaming entre les instances PSQL, avec la configuration des serveurs primaire et secondaire (pg0 et pg1), ainsi que des serveurs secondaires synchrone puis asynchrone, a permis d'explorer le fonctionnement des slots de réplication et l'impact de la fonction CHECKPOINT sur les fichiers WAL.
-
-Cependant, il est important de souligner que cette solution s'avère difficilement implémentable pour un modèle cloud natif tel que Kubernetes. La gestion complexe du fail-over est un défi notable, bien que des solutions existent, notamment à travers des opérateurs Kubernetes comme celui proposé par Zalando.
-
-En dépit des difficultés rencontrées, ce TP a été enrichissant, offrant des perspectives éclairantes sur les choix à considérer dans des projets futurs. L'expérience acquise souligne l'importance de prendre en compte les spécificités des environnements cloud natifs et des solutions dédiées pour garantir une mise en œuvre efficace de la réplication dans des contextes tels que Kubernetes.
