@@ -4,11 +4,13 @@ Cette documentation vous guidera à travers le processus de mise en place d'une 
 
 Dans l'objectif d'aborder les problématiques **cloud native**, nous avons choisi d'utiliser **Docker** et **Kubernetes** pour la mise en place de l'infrastructure.
 
+Vous pouvez trouver tous les fichiers de deploiements en lien avec ce TP sur notre [repository](https://github.com/charley04310/postgres-replication)
+
 ## Table des matières
 
 - [PostgreSQL - Streaming replication](#postgresql---streaming-replication)
   - [Table des matières](#table-des-matières)
-  - [I)   Docker Compose](#i---docker-compose)
+  - [I) Docker Compose](#i---docker-compose)
     - [1. Instance creation](#1-instance-creation)
     - [2. Configuration](#2-configuration)
       - [2.1. Primary instance (pg0)](#21-primary-instance-pg0)
@@ -32,7 +34,7 @@ Dans l'objectif d'aborder les problématiques **cloud native**, nous avons chois
     - [Bonus : utilisation du QUORUM](#bonus--utilisation-du-quorum)
     - [8. Analyse des slots de réplication](#8-analyse-des-slots-de-réplication)
       - [8.1. Analyse des fichiers WAL](#81-analyse-des-fichiers-wal)
-  - [II)  Kubernetes](#ii--kubernetes)
+  - [II) Kubernetes](#ii--kubernetes)
     - [1. Première approche](#1-première-approche)
       - [1.1 Le « StatefulSet »](#11-le--statefulset-)
       - [1.2 Le « ConfigMap »](#12-le--configmap-)
@@ -42,7 +44,7 @@ Dans l'objectif d'aborder les problématiques **cloud native**, nous avons chois
     - [4. Quelles sont les leçons à en tirer ?](#4-quelles-sont-les-leçons-à-en-tirer-)
   - [Conclusion](#conclusion)
 
-## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 />  Docker Compose
+## I) <img src="https://www.vectorlogo.zone/logos/docker/docker-official.svg" alt="docker" height=50 /> Docker Compose
 
 ### 1. Instance creation
 
@@ -496,7 +498,7 @@ On remarque que la valeur hexadécimale des fichiers WAL a bien changé. On peut
 
 ## II) <img src="https://www.vectorlogo.zone/logos/kubernetes/kubernetes-icon.svg" alt="docker" height=50 /> Kubernetes
 
-Pour aller plus loin, il est intéressant d'examiner l'état de l'art des bases de données relationnelles dans un contexte de mise à l'échelle et de résilience dans l'un des technologies les plus prisés aujourd'hui : *Kubernetes*.
+Pour aller plus loin, il est intéressant d'examiner l'état de l'art des bases de données relationnelles dans un contexte de mise à l'échelle et de résilience dans l'un des technologies les plus prisés aujourd'hui : _Kubernetes_.
 
 Il est indispensable pour des entreprises telles que Zalando ou Amazon de disposer d'une base de données hautement disponible. Cela nécessite des fonctionnalités de résilience, de mise à l'échelle dynamique et de reprise après sinistre.
 
@@ -514,12 +516,13 @@ Dans le cadre de notre TP, nous allons tenter de déployer cette solution dans K
 
 StatefulSet est l'objet de l'API de charge de travail utilisé pour gérer les applications avec état. Il gère le déploiement et la mise à l'échelle d'un ensemble de Pods et fournit des garanties sur l'ordre et l'unicité de ces Pods.
 
-Le modèle de conception du StatefulSet suit une logique maître/esclave, ce qui se révèle particulièrement pertinent dans notre cas, notamment pour la gestion de PostgreSQL et de sa réplication. Nous avons ainsi une base de données principale (primaire) et des bases de données de secours (standby). 
+Le modèle de conception du StatefulSet suit une logique maître/esclave, ce qui se révèle particulièrement pertinent dans notre cas, notamment pour la gestion de PostgreSQL et de sa réplication. Nous avons ainsi une base de données principale (primaire) et des bases de données de secours (standby).
 
 Dans cette configuration :
-- l'index 0 du StatefulSet représente notre base de données principale
-- les index supérieurs à 0 correspondent aux serveurs standby.
-  
+
+- l'index 0 du StatefulSet représente notre base de données principale (primaire)
+- les index supérieurs à 0 correspondent aux serveurs standby (secondaire).
+
 Vous pouvez consulter le manifeste [statefulset.yaml](./manifests/statefulset.yaml) pour plus de détails.
 
 #### 1.2 Le « ConfigMap »
@@ -540,7 +543,7 @@ get_ordinal() {
 }
 ```
 
-Cette fonction extrait l'index du nom d'hôte du pod, ce qui permet de distinguer les pods principaux des pods standby et de prendre les mesures appropriées en fonction de leur rôle dans le cluster PostgreSQL.
+Cette fonction extrait l'index du nom d'hôte du pod, ce qui permet de distinguer le pod principal des pods standby (secondaire) et de prendre les mesures appropriées en fonction de leur rôle dans le cluster PostgreSQL.
 
 #### 1.3 Le « Headless Service »
 
